@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRRS Pro - Sistema de Análise Semiótica</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+
+        :root {
+            --bg: #030712;
+            --glass: rgba(17, 24, 39, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --cyan: #00f2ff;
+            --text: #f9fafb;
+            --red: #ff4d4d;
+            --yellow: #ffcc00;
+            --green: #00ff88;
+            --blue: #3399ff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 0% 0%, #1e1b4b 0%, #030712 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 25px;
+        }
+
+        /* Sidebar: API e Lista de Alunos */
+        .sidebar {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 25px;
+            border: 1px solid var(--glass-border);
+            height: calc(100vh - 40px);
+            position: sticky; top: 20px;
+            display: flex; flex-direction: column;
+        }
+
+        .api-box {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .api-box h4 { font-size: 0.8rem; color: var(--cyan); margin-bottom: 10px; text-transform: uppercase; }
+        
+        input[type="password"] {
+            width: 100%; padding: 12px; background: rgba(0,0,0,0.4);
+            border: 1px solid var(--glass-border); border-radius: 12px;
+            color: var(--cyan); font-family: monospace; font-size: 0.8rem; outline: none;
+        }
+
+        .student-list { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        .student-item {
+            padding: 15px; margin-bottom: 10px; border-radius: 16px;
+            background: rgba(255,255,255,0.03); cursor: pointer;
+            transition: 0.3s; border: 1px solid transparent;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .student-item:hover { background: rgba(0, 242, 255, 0.05); }
+        .student-item.active {
+            background: rgba(0, 242, 255, 0.15); border-color: var(--cyan);
+        }
+
+        /* Painel Principal */
+        .main-panel { display: flex; flex-direction: column; gap: 25px; }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 30px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .top-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 25px; }
+
+        /* Gráfico */
+        .chart-box { height: 400px; display: flex; align-items: center; justify-content: center; }
+
+        /* Sliders Customizados */
+        .slider-group { margin-bottom: 20px; }
+        .slider-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
+        input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 5px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; background: var(--cyan); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px var(--cyan); }
+
+        /* Estilização do Diagnóstico IA */
+        .ia-section { margin-top: 25px; border-top: 1px solid var(--glass-border); padding-top: 25px; }
+        .ia-response { 
+            background: rgba(0,0,0,0.3); padding: 25px; border-radius: 18px; 
+            margin-top: 15px; font-size: 0.95rem; line-height: 1.7; color: #d1d5db;
+            text-align: justify; border: 1px solid transparent; transition: 0.5s;
+        }
+        .ia-response strong { color: var(--cyan); font-weight: 700; } /* Cor para o negrito da IA */
+
+        .btn-ia {
+            background: var(--cyan); color: #000; border: none; padding: 12px 24px;
+            border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.3s;
+            text-transform: uppercase; font-size: 0.8rem;
+        }
+        .btn-ia:hover { transform: translateY(-2px); box-shadow: 0 0 20px var(--cyan); }
+        .btn-ia:disabled { background: #4b5563; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* Tabela Heatmap */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.85rem; }
+        th { text-align: left; padding: 12px; color: var(--cyan); opacity: 0.7; font-weight: 600; }
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .score-pill { padding: 4px 10px; border-radius: 8px; font-weight: 800; }
+
+        .loading-text { color: var(--yellow); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } .top-grid { grid-template-columns: 1fr; } .sidebar { height: auto; position: static; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <aside class="sidebar">
+        <div class="api-box">
+            <h4>DeepSeek API Key</h4>
+            <input type="password" id="apiKey" placeholder="Cole sua sk-... aqui">
+        </div>
+        <h3 style="margin-bottom:15px; color:rgba(255,255,255,0.8)">Turma Amazonas</h3>
+        <div class="student-list" id="list"></div>
+    </aside>
+
+    <main class="main-panel">
+        <div class="top-grid">
+            <div class="glass-card">
+                <h2 id="name" style="letter-spacing:-1px">Selecionar Aluno</h2>
+                <div id="sliders" style="margin-top:25px"></div>
+                
+                <div class="ia-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <h3 style="color:var(--cyan); font-size:1.1rem">Diagnóstico IA Pedagógico</h3>
+                        <button class="btn-ia" id="btnIA" onclick="pedirIA()">Analisar</button>
+                    </div>
+                    <div class="ia-response" id="ia-out">Selecione um aluno e clique no botão para gerar uma análise baseada na Teoria de Duval.</div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="chart-box">
+                    <canvas id="radar"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card table-container">
+            <h3 style="margin-bottom:15px; opacity:0.6">Mapa de Calor da Turma (Visão Global)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome do Aluno</th>
+                        <th style="text-align:center">Assimilação</th>
+                        <th style="text-align:center">Tratamento</th>
+                        <th style="text-align:center">Conversão</th>
+                        <th style="text-align:center">Relações</th>
+                        <th style="text-align:center">Média</th>
+                    </tr>
+                </thead>
+                <tbody id="heatmap"></tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<script>
+    // 1. Banco de Dados com 10 Perfis Cognitivos Reais
+    const alunos = [
+        { name: "Lucas Silva", scores: [4, 4, 1, 1], ia: null }, // O "Calculador": Gargalo na Conversão
+        { name: "Maria Oliveira", scores: [3, 3, 3, 3], ia: null }, // A "Equilibrada"
+        { name: "Enzo Santos", scores: [2, 1, 1, 1], ia: null }, // Dificuldade de base
+        { name: "Valentina Luz", scores: [4, 4, 4, 4], ia: null }, // Coordenação Plena (Noésis)
+        { name: "Gabriel Souza", scores: [3, 4, 2, 2], ia: null }, // Foca no Tratamento
+        { name: "Beatriz Costa", scores: [4, 2, 4, 3], ia: null }, // Converte bem, erra Tratamento
+        { name: "Rafael Mello", scores: [2, 2, 2, 2], ia: null }, // Regular constante
+        { name: "Sofia Rocha", scores: [4, 4, 4, 3], ia: null }, // Avançada
+        { name: "Thiago Lima", scores: [3, 3, 2, 1], ia: null }, // Desconectado nas Relações
+        { name: "Helena Matos", scores: [4, 3, 3, 3], ia: null }  // Consistente
+    ];
+
+    let userIdx = -1;
+    let chart;
+    const cats = ["Assimilação", "Tratamento", "Conversão", "Relações"];
+    const colors = { 1: "#ff4d4d", 2: "#ffcc00", 3: "#00ff88", 4: "#3399ff" };
+
+    function init() {
+        setupChart();
+        renderList();
+        renderHeatmap();
+        select(0);
+    }
+
+    function setupChart() {
+        const ctx = document.getElementById('radar').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Assimilação', 'Tratamento', 'Conversão', 'Relações'],
+                datasets: [{ 
+                    data: [0,0,0,0], 
+                    borderWidth: 3, 
+                    borderColor: '#fff', 
+                    pointBackgroundColor: '#fff',
+                    fill: true 
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { 
+                    r: { 
+                        min: 0, max: 4, 
+                        ticks: { display: false, stepSize: 1 }, 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        angleLines: { color: 'rgba(255,255,255,0.1)' },
+                        pointLabels: { color: 'rgba(255,255,255,0.5)', font: { size: 12, weight: 'bold' } }
+                    } 
+                },
+                plugins: { legend: { display: false } }
+            },
+            plugins: [{
+                beforeDatasetsDraw(chart) {
+                    const { ctx, chartArea } = chart;
+                    const x = (chartArea.left + chartArea.right) / 2;
+                    const y = (chartArea.top + chartArea.bottom) / 2;
+                    const radius = Math.min((chartArea.right - chartArea.left) / 2, (chartArea.bottom - chartArea.top) / 2);
+                    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                    grad.addColorStop(0, 'rgba(255, 77, 77, 0.7)');    
+                    grad.addColorStop(0.5, 'rgba(255, 204, 0, 0.2)');  
+                    grad.addColorStop(1, 'rgba(0, 242, 255, 0.4)');    
+                    chart.data.datasets[0].backgroundColor = grad;
+                }
+            }]
+        });
+    }
+
+    function renderList() {
+        const div = document.getElementById('list');
+        div.innerHTML = alunos.map((s, i) => `
+            <div class="student-item ${i===userIdx?'active':''}" onclick="select(${i})">
+                <span>${s.name}</span>
+                <span style="font-size:0.7rem; font-weight:800; color:var(--cyan)">${(s.scores.reduce((a,b)=>a+b)/4).toFixed(1)}</span>
+            </div>
+        `).join('');
+    }
+
+    function select(i) {
+        userIdx = i;
+        const s = alunos[i];
+        document.getElementById('name').innerText = s.name;
+        document.getElementById('ia-out').innerHTML = s.ia || "Clique em 'Analisar' para gerar o diagnóstico.";
+        
+        const ctrl = document.getElementById('sliders');
+        ctrl.innerHTML = s.scores.map((v, idx) => `
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span style="font-weight:600; opacity:0.8">${cats[idx]}</span>
+                    <span style="color:${colors[v]}; font-weight:800; text-transform:uppercase; font-size:0.75rem">${v === 4 ? 'Ótimo' : v === 1 ? 'Insuficiente' : v === 2 ? 'Regular' : 'Bom'}</span>
+                </div>
+                <input type="range" min="1" max="4" value="${v}" oninput="updateVal(${idx}, this.value)">
+            </div>
+        `).join('');
+
+        chart.data.datasets[0].data = s.scores;
+        chart.update();
+        renderList();
+        
+        const iaBox = document.getElementById('ia-out');
+        iaBox.style.borderColor = s.ia ? 'var(--cyan)' : 'transparent';
+    }
+
+    function updateVal(catIdx, val) {
+        alunos[userIdx].scores[catIdx] = parseInt(val);
+        alunos[userIdx].ia = null; 
+        chart.data.datasets[0].data = alunos[userIdx].scores;
+        chart.update();
+        renderHeatmap();
+        select(userIdx);
+    }
+
+    function renderHeatmap() {
+        const tb = document.getElementById('heatmap');
+        tb.innerHTML = alunos.map(s => {
+            const media = s.scores.reduce((a,b)=>a+b)/4;
+            return `
+                <tr>
+                    <td><strong>${s.name}</strong></td>
+                    ${s.scores.map(v => `<td style="text-align:center"><span class="score-pill" style="background:${colors[v]}22; color:${colors[v]}">${v}</span></td>`).join('')}
+                    <td style="text-align:center; font-weight:bold; opacity:0.8">${media.toFixed(1)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function pedirIA() {
+        const key = document.getElementById('apiKey').value.trim();
+        const out = document.getElementById('ia-out');
+        const btn = document.getElementById('btnIA');
+        if(!key) return alert("Por favor, cole sua chave DeepSeek API para continuar.");
+        
+        const s = alunos[userIdx];
+        out.innerHTML = "<span class='loading-text'>Analisando registros semióticos de " + s.name + "...</span>";
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [
+                        { role: "system", content: "Você é um especialista na Teoria de Duval. Analise as notas (1-4) de C1 a C4. Use obrigatoriamente negrito (**) para termos técnicos e diagnóstico. Seja direto." },
+                        { role: "user", content: `Aluno: ${s.name}, Notas: C1:${s.scores[0]}, C2:${s.scores[1]}, C3:${s.scores[2]}, C4:${s.scores[3]}` }
+                    ],
+                    temperature: 0.4
+                })
+            });
+            const data = await res.json();
+            let rawText = data.choices[0].message.content;
+
+            // FORMATAÇÃO DO TEXTO (Markdown para HTML Real)
+            let formattedText = rawText
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Transforma ** em <strong>
+                .replace(/\n/g, '<br>'); // Transforma quebras de linha em <br>
+
+            s.ia = formattedText;
+            out.innerHTML = formattedText;
+            document.getElementById('ia-out').style.borderColor = 'var(--cyan)';
+        } catch (e) { 
+            out.innerHTML = "<span style='color:var(--red)'>Erro na conexão. Verifique sua chave ou internet.</span>"; 
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
