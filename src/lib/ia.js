@@ -24,36 +24,22 @@ Dimensões TRRS avaliadas:
 ${dims}`;
 }
 
-export async function gerarDiagnostico(aluno, apiKey) {
-  if (!apiKey) throw new Error('Insira a chave DeepSeek API na barra de configuração.');
-
+export async function gerarDiagnostico(aluno) {
   const prompt = buildPrompt(aluno);
 
-  const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  const res = await fetch('/api/diagnostico', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: 'Responda sempre em português do Brasil. Use markdown (negrito com **) para termos técnicos.' },
-        { role: 'user',   content: prompt }
-      ],
-      temperature: 0.35,
-      stream: false,
-    }),
+    body: JSON.stringify({ prompt }),
   });
 
+  const data = await res.json();
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Erro HTTP ${res.status}`);
+    throw new Error(data?.error || `Erro HTTP ${res.status}`);
   }
 
-  const data = await res.json();
-  let raw = data.choices?.[0]?.message?.content || '';
-
-  // Return raw markdown, will be rendered in component
-  return raw;
+  return data.result;
 }

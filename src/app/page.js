@@ -27,7 +27,6 @@ export default function Dashboard() {
   const [alunos, setAlunos] = useState([]);
   const [alunoAtual, setAlunoAtual] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [apiKey, setApiKey] = useState(process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY || '');
   const [iaCache, setIaCache] = useState({});
   const [iaLoading, setIaLoading] = useState(false);
   const [iaError, setIaError] = useState('');
@@ -98,15 +97,11 @@ export default function Dashboard() {
 
   const handlePedirIA = async () => {
     if (!alunoAtual) return;
-    if (!apiKey) {
-      addToast('Cole sua chave DeepSeek API na barra de configuração.', 'error');
-      return;
-    }
     
     setIaLoading(true);
     setIaError('');
     try {
-      const markdown = await gerarDiagnostico(alunoAtual, apiKey);
+      const markdown = await gerarDiagnostico(alunoAtual);
       
       // Simple markdown to HTML conversion
       const html = markdown
@@ -210,21 +205,7 @@ export default function Dashboard() {
         </nav>
       </header>
 
-      {/* ─── CONFIG BAR ─── */}
-      <div className="config-bar">
-        <span className={`status-dot ${apiKey ? 'ok' : 'idle'}`}></span>
-        <label htmlFor="deepseekKey">
-          <Settings size={14} /> DeepSeek API:
-        </label>
-        <input 
-          type="password" 
-          id="deepseekKey"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="Cole sua chave sk-... aqui (usada apenas no seu navegador)"
-        />
-      </div>
-
+      {/* ─── APP BODY ─── */}
       <div className="app-body">
         {/* ─── SIDEBAR ─── */}
         <aside className="sidebar">

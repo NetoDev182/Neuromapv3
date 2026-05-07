@@ -215,13 +215,19 @@ tbody tr:hover td { background: #f7faff; }
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {
-    .app-body { grid-template-columns: 1fr; height: auto; }
+    .app-body { grid-template-columns: 1fr; height: auto; display: flex; flex-direction: column; }
     .sidebar { height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .student-list { max-height: 280px; } /* Limits height on mobile so it doesn't push content too far down */
     .top-grid { grid-template-columns: 1fr; }
     .main-panel { padding: 20px 16px; }
 }
 @media (max-width: 600px) {
-    .app-header { padding: 0 16px; }
-    .config-bar { flex-wrap: wrap; padding: 10px 16px; }
+    .app-header { padding: 12px 16px; height: auto; flex-direction: column; gap: 12px; align-items: flex-start; }
+    .header-meta { font-size: 0.7rem; flex-wrap: wrap; gap: 8px; }
+    .config-bar { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 16px; }
+    .config-bar input { max-width: 100%; width: 100%; }
     .form-row { grid-template-columns: 1fr; }
+    .ia-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .ia-header .btn { width: 100%; }
+    .modal { padding: 24px 20px; width: 95%; }
 }
